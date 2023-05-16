@@ -1,3 +1,5 @@
+let DB;
+
 // Campos del formulario
 const mascotaInput = document.querySelector('#mascota');
 const propietarInput = document.querySelector('#propietario');
@@ -135,8 +137,15 @@ class UI {
 const ui = new UI();
 const administrarCitas = new Citas();
 
+window.onload = () => {
+    eventListeners();
+    
+    crearDB();
+}
+
+
 // Registrar eventos
-eventListeners();
+
 function eventListeners() {
     mascotaInput.addEventListener('input', datosCita);
     propietarInput.addEventListener('input', datosCita);
@@ -194,8 +203,22 @@ function nuevaCita(e) {
     // Creando una nueva cita
     administrarCitas.agregarCitas({...citaObj});
 
-    // Mensaje mostrado 
-    ui.imprimirAlerta('Se agregó correctamente');
+    // Insertar registro in IndexDB
+    const transaction = DB.transaction(['citas'], 'readwrite');
+
+    // Habilitar el objectStore
+    const objectStore = transaction.objectStore('citas');
+
+    // Insertar en la BD
+    objectStore.add(citaObj);
+
+    transaction.oncomplete = function() {
+        console.log('Cita agregada');
+
+        // Mensaje mostrado 
+        ui.imprimirAlerta('Se agregó correctamente');
+        
+    }
     }
 
     
@@ -255,4 +278,47 @@ function cargarEdicion(cita) {
     formulario.querySelector('button[type="submit"]').textContent = 'Guardar Cambios';
 
     editando = true;
+}
+
+
+function crearDB() {
+    // Crear la base de datos version 1.0
+    const crearDB = window.indexedDB.open('citas', 1);
+
+    // Si hay un error
+    crearDB.onerror = function() {
+        console.log('Hubo un error');
+    }
+
+    // Si todo sale bien
+    crearDB.onsuccess = function() {
+        console.log('DB Creada');
+       
+        DB = crearDB.result;
+
+
+    }
+
+    // Definir el schema
+    crearDB.onupgradeneeded = function(e) {
+        const db = e.target.result;
+
+        const objectStore = db.createObjectStore('citas', {
+            keyPat: 'id',
+            autoIncrement: true
+        })
+
+        // Definior las columnas
+        objectStore.createIndex('mascota', 'mascota', { unique: false });
+        objectStore.createIndex('propietario', 'propietario', { unique: false });
+        objectStore.createIndex('telefono', 'telefono', { unique: false });
+        objectStore.createIndex('fecha', 'fecha', { unique: false });
+        objectStore.createIndex('hora', 'hora', { unique: false });
+        objectStore.createIndex('sintomas', 'sintomas', { unique: false });
+        objectStore.createIndex('id', 'id', { unique: true });
+
+        console.log('DB creada y lista');
+    }
+
+
 }
